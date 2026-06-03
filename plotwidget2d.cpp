@@ -8,6 +8,108 @@
 #include <chrono>
 #include "approximator2d.h"
 #include <QVector>
+#include <thread>
+/*
+void Approximator2D::BuildGridParallel()
+{
+    int numThreads = std::thread::hardware_concurrency();
+    if (numThreads == 0) numThreads = 1;
+
+    int chunkSize = m_nx / numThreads;
+    int remainder = m_nx % numThreads;
+    
+    std::vector<std::thread> threads;
+    threads.reserve(numThreads);
+
+    int startIdx = 0;
+    for (int t = 0; t < numThreads; ++t) {
+        int myCount = chunkSize + (t < remainder ? 1 : 0);
+        int endIdx = startIdx + myCount;
+
+        threads.emplace_back([this, startIdx, endIdx]() {
+            for (int i = startIdx; i < endIdx; ++i) {
+                // Берем уже вычисленный в initGrid() X
+                double x = m_x[i]; 
+                
+                for (int j = 0; j < m_ny; ++j) {
+                    // Берем уже вычисленный в initGrid() Y
+                    double y = m_y[j]; 
+                    
+                    m_f[i * m_ny + j] = f(x, y);
+                }
+            }
+        });
+
+        startIdx = endIdx; // Переходим к следующему блоку
+    }
+
+    // Синхронизация
+    for (auto &th : threads) {
+        if (th.joinable()) {
+            th.join();
+        }
+    }
+}*/
+/*
+void DrawGridParallel(int dispY){   
+    int numThreads = std::thread::hardware_concurrency();
+    if (numThreads == 0) numThreads = 1;
+
+    int chunkSize =  dispY / numThreads;
+    int remainder =  dispY % numThreads;
+    
+    std::vector<std::thread> threads;
+    threads.reserve(numThreads);
+
+    int startIdx = 0;
+    for (int t = 0; t < numThreads; ++t) {
+        int myCount = chunkSize + (t < remainder ? 1 : 0);
+        int endIdx = startIdx + myCount;
+         threads.emplace_back([&, startIdx, endIdx](){
+
+
+
+
+         });
+
+         startIdx = endIdx; // Переходим к следующему блоку
+    }
+    // Синхронизация
+    for (auto &th : threads) {
+        if (th.joinable()) {
+            th.join();
+        }
+    }
+
+}
+    */
+/*
+    painter.setPen(QPen(Qt::blue, 1));
+
+    // линии вдоль x
+    painter.setPen(QPen(Qt::blue, 1));
+    for (int j = 0; j < dispY; j++) {
+        QPointF prevValid;       // флаг "есть ли предыдущая валидная точка"
+        bool hasPrev = false;
+
+    for (int i = 0; i < dispX; i++) {
+        double v = fgrid[i * dispY + j];
+        if (std::isfinite(v)) {
+            QPointF cur = project(gx[i], gy[j], v,
+                                  cx, cy, scaleXY, scaleZ, xmid, ymid, zmid);
+            if (hasPrev && !std::isnan(cur.x()) && !std::isnan(cur.y())) {
+                painter.drawLine(prevValid, cur);
+            }
+            prevValid = cur;
+            hasPrev = true;
+        } else {
+            hasPrev = false;   // разрыв: забываем предыдущую точку
+        }
+    }
+}
+    */
+
+
 
 PlotWidget2D::PlotWidget2D(Approximator2D *approx, QWidget *parent)
     : QWidget(parent), m_approx(approx), m_lastMaxAbs(-1.0)
