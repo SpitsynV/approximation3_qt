@@ -128,15 +128,26 @@ double Approximator2D::f(double x, double y) const
         return NAN;
     }
     double v = GetExactValue(x, y, m_k);
-    // возмущение применяется только в 1 точке
-    if (m_p != 0 && m_nx > 0 && m_ny>0) {
-        int midx = m_nx / 2;
-        int midy = m_ny/2;
-        // Сравнение с mid с учётом погрешности
-        if (std::abs(x - m_x[midx]) < 1e-12 * std::max(1.0, std::abs(x))) {
-            if(std::abs(y - m_y[midy]) < 1e-12 * std::max(1.0, std::abs(y))){
-                v += m_p * 0.1 * m_maxAbsF;
-            }
+    
+    // Возмущение применяется ровно в одном узле, в зависимости от геометрии задачи
+    if (m_p != 0 && m_nx > 0 && m_ny > 0) {
+        double targetX = 0.0;
+        double targetY = 0.0;
+        
+        if (TaskNum == 1) {
+            // Для прямоугольника — центральный узел декартовой сетки
+            int midx = m_nx / 2;
+            int midy = m_ny / 2;
+            targetX = m_x[midx];
+            targetY = m_y[midy];
+        } else if (TaskNum == 2) {
+            // Для круга — строго центр круга
+            targetX = m_aa; // cx
+            targetY = m_bb; // cy
+        }
+        
+        if (std::abs(x - targetX) < 1e-12 && std::abs(y - targetY) < 1e-9) {
+            v += m_p * 0.1 * m_maxAbsF;
         }
     }
     return v;
