@@ -18,6 +18,8 @@ add_executable(approx3
     approximator2d.cpp  approximator2d.h
     plotwidget2d.cpp    plotwidget2d.h
     error.cpp           error.h
+    task313.cpp
+    task313.h
 )
 
 target_link_libraries(approx3

@@ -8,7 +8,7 @@
 class Approximator2D
 {
 public:
-    Approximator2D(double a, double b, double c, double d, double aa, double bb, double cc, double dd,
+    Approximator2D(int TaskNum, double a, double b, double c, double d, double aa, double bb, double cc, double dd,
                    int nx, int ny, int mx, int my, int k);
 
     // Пересчёт коэффициентов при изменении параметров

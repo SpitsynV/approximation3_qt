@@ -86,11 +86,10 @@ double maxAbsoluteErrorParallel(double a, double b, double c, double d,
         startIdx = endIdx; // переходим к следующему блоку
     }
 
-    // Ждём завершения всех потоков
+    // Ждём всех
     for (auto &th : threads)
         th.join();
 
-    // Финальная редукция – максимум из всех локальных
     double globalMax = 0.0;
     for (double val : localMax)
         if (val > globalMax)
