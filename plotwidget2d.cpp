@@ -55,9 +55,11 @@ void PlotWidget2D::paintEvent(QPaintEvent *)
     double xMin = xmid - xhalf, xMax = xmid + xhalf;
     double yMin = ymid - yhalf, yMax = ymid + yhalf;
 
-    // ──Cетка визуализации mx×my ──────────────────────────────────
-    const int dispX = std::min(m_approx->mx(), std::max(2, width()  / 4));
-    const int dispY = std::min(m_approx->my(), std::max(2, height() / 4));
+    // ── Визуализационная сетка mx×my ──────────────────────────────────
+    int w = width();
+    int h = height();
+    const int dispX = std::min(m_approx->mx(), std::max(2, w / 4));
+    const int dispY = std::min(m_approx->my(), std::max(2, h / 4));
 
     std::vector<double> gx(dispX), gy(dispY);
     for (int i = 0; i < dispX; i++)
@@ -65,14 +67,14 @@ void PlotWidget2D::paintEvent(QPaintEvent *)
     for (int j = 0; j < dispY; j++)
         gy[j] = yMin + j * (yMax - yMin) / (dispY - 1);
 
-    // Выделяем память под сетку значений
     std::vector<double> fgrid(dispX * dispY);
 
+    // Определяем количество доступных ядер процессора
     unsigned int numThreads = std::thread::hardware_concurrency();
-    if (numThreads == 0) numThreads = 4; // на всякий случай
+    if (numThreads == 0) numThreads = 4;
 
     // ─────────────────────────────────────────────────────────────────
-    // Многопток 1: ПАРАЛЛЕЛЬНОЕ ВЫЧИСЛЕНИЕ ЗНАЧЕНИЙ ФУНКЦИИ (fgrid)
+    // ПОТОК 1: ПАРАЛЛЕЛЬНЫЙ РАСЧЕТ МАТЕМАТИКИ (fgrid)
     // ─────────────────────────────────────────────────────────────────
     std::vector<std::thread> threads;
     threads.reserve(numThreads);
@@ -81,7 +83,6 @@ void PlotWidget2D::paintEvent(QPaintEvent *)
         threads.emplace_back([t, numThreads, dispX, dispY, &gx, &gy, &fgrid, plotFunc]() {
             int startX = t * dispX / numThreads;
             int endX = (t + 1) * dispX / numThreads;
-
             for (int i = startX; i < endX; ++i) {
                 for (int j = 0; j < dispY; ++j) {
                     fgrid[i * dispY + j] = plotFunc(gx[i], gy[j]);
@@ -89,10 +90,10 @@ void PlotWidget2D::paintEvent(QPaintEvent *)
             }
         });
     }
-    for (auto& th : threads) th.join(); // Ждем, пока все потоки досчитают
+    for (auto& th : threads) th.join();
     threads.clear();
 
-    // Быстрый поиск минимума и максимума 
+    // Поиск минимума и максимума по готовой памяти
     double Fmin = 0.0, Fmax = 0.0;
     bool firstVal = true;
     for (double v : fgrid) {
@@ -113,24 +114,23 @@ void PlotWidget2D::paintEvent(QPaintEvent *)
     if (zrange < 1e-14) zrange = 1.0;
 
     double xyrange = std::max(xMax - xMin, yMax - yMin);
-    double scaleXY = std::min(width(), height()) * 0.4 / (xyrange > 0 ? xyrange : 1.0);
-    double scaleZ  = std::min(width(), height()) * 0.35 / zrange;
+    double scaleXY = std::min(w, h) * 0.4 / (xyrange > 0 ? xyrange : 1.0);
+    double scaleZ  = std::min(w, h) * 0.35 / zrange;
 
-    double cx = width()  * 0.5;
-    double cy = height() * 0.55;
+    double cx = w * 0.5;
+    double cy = h * 0.55;
 
-    //буфер под рассчитанные экранные координаты
     std::vector<QPointF> screenGrid(dispX * dispY);
 
     // ─────────────────────────────────────────────────────────────────
-    // Многопоток 2: ПАРАЛЛЕЛЬНЫЙ РАСЧЕТ ПРОЕКЦИЙ В ЭКР КООРДИНАТЫ
+    // ПОТОК 2: ПАРАЛЛЕЛЬНЫЙ РАСЧЕТ ПРОЕКЦИЙ (screenGrid)
     // ─────────────────────────────────────────────────────────────────
     for (unsigned int t = 0; t < numThreads; ++t) {
+        // ДОБАВЛЕНО: &gx, &gy внесены в список захвата лямбды
         threads.emplace_back([t, numThreads, dispX, dispY, &gx, &gy, &fgrid, &screenGrid, this,
                               cx, cy, scaleXY, scaleZ, xmid, ymid, zmid]() {
             int startX = t * dispX / numThreads;
             int endX = (t + 1) * dispX / numThreads;
-
             for (int i = startX; i < endX; ++i) {
                 for (int j = 0; j < dispY; ++j) {
                     double v = fgrid[i * dispY + j];
@@ -143,53 +143,76 @@ void PlotWidget2D::paintEvent(QPaintEvent *)
         });
     }
     for (auto& th : threads) th.join();
+    threads.clear();
 
     // ─────────────────────────────────────────────────────────────────
-    // Попытка вызвать методы отрисовки drawLine из параллельных потоков std::thread заблокирована на уровне архитектуры Qt
-    //Поэтому:
-    // ОТРИСОВКА: ПОСЛЕДОВАТЕЛЬНО В ГЛАВНОМ ПОТОКЕ ПО ГОТОВЫМ ТОЧКАМ
+    // ПОТОК 3: ПАРАЛЛЕЛЬНАЯ ОТРИСОВКА ЛИНИЙ В ОБЪЕКТЫ QIMAGE (СЛОИ)
     // ─────────────────────────────────────────────────────────────────
-    
-    // Линии вдоль X
-    painter.setPen(QPen(Qt::blue, 1));
-    for (int j = 0; j < dispY; j++) {
-        QPointF prevValid;       
-        bool hasPrev = false;
+    std::vector<QImage> layers(numThreads);
 
-        for (int i = 0; i < dispX; i++) {
-            double v = fgrid[i * dispY + j];
-            if (std::isfinite(v)) {
-                QPointF cur = screenGrid[i * dispY + j];
-                if (hasPrev && !std::isnan(cur.x()) && !std::isnan(cur.y())) {
-                    painter.drawLine(prevValid, cur);
+    for (unsigned int t = 0; t < numThreads; ++t) {
+        threads.emplace_back([t, numThreads, dispX, dispY, w, h, &fgrid, &screenGrid, &layers]() {
+            // Создаем личный прозрачный холст для потока
+            layers[t] = QImage(w, h, QImage::Format_ARGB32_Premultiplied);
+            layers[t].fill(Qt::transparent);
+
+            // Создаем локальный рисовальщик для этого холста
+            QPainter p(&layers[t]);
+            p.setRenderHint(QPainter::Antialiasing, false);
+
+            // Рисуем СВОЮ порцию линий вдоль X
+            p.setPen(QPen(Qt::blue, 1));
+            int startY = t * dispY / numThreads;
+            int endY = (t + 1) * dispY / numThreads;
+            for (int j = startY; j < endY; j++) {
+                QPointF prevValid;       
+                bool hasPrev = false;
+                for (int i = 0; i < dispX; i++) {
+                    double v = fgrid[i * dispY + j];
+                    if (std::isfinite(v)) {
+                        QPointF cur = screenGrid[i * dispY + j];
+                        if (hasPrev && !std::isnan(cur.x()) && !std::isnan(cur.y())) {
+                            p.drawLine(prevValid, cur);
+                        }
+                        prevValid = cur;
+                        hasPrev = true;
+                    } else {
+                        hasPrev = false;   
+                    }
                 }
-                prevValid = cur;
-                hasPrev = true;
-            } else {
-                hasPrev = false;   
             }
-        }
+
+            // Рисуем СВОЮ порцию линий вдоль Y
+            p.setPen(QPen(QColor(0, 150, 200), 1));
+            int startX = t * dispX / numThreads;
+            int endX = (t + 1) * dispX / numThreads;
+            for (int i = startX; i < endX; i++) {
+                QPointF prevValid;
+                bool hasPrev = false;
+                for (int j = 0; j < dispY; j++) {
+                    double v = fgrid[i * dispY + j];
+                    if (std::isfinite(v)) {
+                        QPointF cur = screenGrid[i * dispY + j];
+                        if (hasPrev && !std::isnan(cur.x()) && !std::isnan(cur.y())) {
+                            p.drawLine(prevValid, cur);
+                        }
+                        prevValid = cur;
+                        hasPrev = true;
+                    } else {
+                        hasPrev = false;   
+                    }
+                }
+            }
+            p.end(); 
+        });
     }
+    for (auto& th : threads) th.join();
 
-    // Линии вдоль Y
-    painter.setPen(QPen(QColor(0, 150, 200), 1));
-    for (int i = 0; i < dispX; i++) {
-        QPointF prevValid;
-        bool hasPrev = false;
-
-        for (int j = 0; j < dispY; j++) {
-            double v = fgrid[i * dispY + j];
-            if (std::isfinite(v)) {
-                QPointF cur = screenGrid[i * dispY + j];
-                if (hasPrev && !std::isnan(cur.x()) && !std::isnan(cur.y())) {
-                    painter.drawLine(prevValid, cur);
-                }
-                prevValid = cur;
-                hasPrev = true;
-            } else {
-                hasPrev = false;   
-            }
-        }
+    // ─────────────────────────────────────────────────────────────────
+    // КОМПОЗИЦИЯ: СКЛЕИВАЕМ СЛОИ В ГЛАВНОМ ПОТОКЕ ЗА ОДИН МИГ
+    // ─────────────────────────────────────────────────────────────────
+    for (const auto& layer : layers) {
+        painter.drawImage(0, 0, layer);
     }
 
     // ── Информационная строка ──────────────────────────────────────────
