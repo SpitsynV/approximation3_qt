@@ -217,6 +217,11 @@ void PlotWidget2D::keyPressEvent(QKeyEvent *event)
     auto end = std::chrono::high_resolution_clock::now();
     elapsed = end - start;
     fprintf(stderr, "Time err 1: %e seconds\n", elapsed.count());
+    start = std::chrono::high_resolution_clock::now();
+    fprintf(stderr, "Max error method 2 = %e\n", m_approx->getMaxError2());
+    end = std::chrono::high_resolution_clock::now();
+    elapsed = end - start;
+    fprintf(stderr, "Time err 2: %e seconds\n", elapsed.count());
     // не меняем состояние и не перерисовываем
     return;
     }
@@ -263,6 +268,12 @@ void PlotWidget2D::keyPressEvent(QKeyEvent *event)
     case Qt::Key_6:
         m_approx->setP(m_approx->p() + 1);
         needRebuild = true;
+        m_approx->initGrid(); 
+    if (m_approx->TaskNum == 1) {
+        m_approx->BuildGridParallel();
+    } else {
+        m_approx->BuildGridRParallel();
+    }
         /*
         {
             int iimid = m_approx->nx() / 2;

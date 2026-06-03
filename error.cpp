@@ -44,7 +44,7 @@ double maxAbsoluteErrorParallel(double a, double b, double c, double d,
     double stepx = (b - a) / N;
     double stepy = (d - c) / N;
 
-    // Хранилище для локальных максимумов потоков (размер = numThreads)
+    
     std::vector<double> localMax(numThreads, 0.0);
     std::vector<std::thread> threads;
     threads.reserve(numThreads);
@@ -62,26 +62,33 @@ double maxAbsoluteErrorParallel(double a, double b, double c, double d,
                                         //те на блок [StartIdx, endIdx)
 
         // Запускаем поток
-        threads.emplace_back([&, start = startIdx, end = endIdx, t]() {
-            double maxErrLocal = 0.0;
+      // Запускаем поток
+threads.emplace_back([&, start = startIdx, end = endIdx, t]() {
+    double maxErrLocal = 0.0;
 
-            for (int i = start; i < end; ++i) {
-                double x = a + i * stepx;
-                for (int j = 0; j <= N; ++j) {
-                    double y = c + j * stepy;
-                    if(!std::isnan(exactFunc(x, y)) && !std::isnan(approxFunc(x, y))){
-                        continue; // пропускаем точки вне области определения
-                    
-                    double diff = std::abs(exactFunc(x, y) - approxFunc(x, y));
-                    if (diff > maxErrLocal)
-                        maxErrLocal = diff;
-                    }
-                }
+    for (int i = start; i < end; ++i) {
+        double x = a + i * stepx;
+        for (int j = 0; j <= N; ++j) {
+            double y = c + j * stepy;
+            
+            // Сохранить значение ->уменьшить число вызвов
+            double exact_val  = exactFunc(x, y);
+            double approx_val = approxFunc(x, y);
+
+            if (std::isnan(exact_val) || std::isnan(approx_val)) {
+                continue; 
             }
+            
+            double diff = std::abs(exact_val - approx_val);
+            if (diff > maxErrLocal) {
+                maxErrLocal = diff;
+            }
+        }
+    }
 
-            // Сохраняем локальный максимум в общий вектор
-            localMax[t] = maxErrLocal;
-        });
+    // Сохраняем локальный максимум в общий вектор
+    localMax[t] = maxErrLocal;
+});
 
         startIdx = endIdx; // переходим к следующему блоку
     }

@@ -38,6 +38,7 @@ void BuildGridR(double cx, double cy, double R, int nx, int ny,
         }
     }
 }
+
 // Получить аппроксимированное значение в произвольной точке круга
 //План: отобразить круг в прямоугольник [0, R] x [0, 2*PI], найти ячейку, в которой находится точка, и выполнить интерполяцию по треугольникам
 //Отдельно обработать случай когда точка близко к центру
@@ -50,9 +51,9 @@ double GetValueR(double px, double py, double cx, double cy, double R,
     // Обратное отображение: находим полярные координаты прообраза точки
     double pr = std::sqrt(dx * dx + dy * dy);
     if (pr > R + 1e-9) {
-        return NAN; // Точка строго вне круга
+        return NAN; 
     }
-    if (pr > R) pr = R; // Коррекция погрешности округления прямо на границе
+    if (pr > R) pr = R; 
     
     double pphi = std::atan2(dy, dx);
     if (pphi < 0) {
@@ -67,7 +68,6 @@ double GetValueR(double px, double py, double cx, double cy, double R,
     int i = static_cast<int>(pr / hr);
     int j = static_cast<int>(pphi / hphi);
     
-    // Ограничение индексов
     if (i < 0) i = 0;
     if (j < 0) j = 0;
     if (i >= nx - 1) i = nx - 2;

@@ -4,6 +4,7 @@
 #include "task313.h"
 #include <cmath>
 #include <algorithm>
+#include <bits/std_thread.h>
 
 Approximator2D::Approximator2D(int TaskNum, double a, double b, double c, double d, double aa, double bb, double cc, double dd,
                                int nx, int ny, int mx, int my, int k)
@@ -25,49 +26,145 @@ Approximator2D::Approximator2D(int TaskNum, double a, double b, double c, double
         m_d=m_bb+m_cc; //cy+R
     }
 }
+bool Approximator2D::IsInsideDomain(double x, double y) const
+{
+    if (TaskNum == 1) {
+        if (x < m_a || x > m_b || y < m_c || y > m_d)
+        return false;
+        // Точка не должна лежать строго внутри выреза
+        if (x > m_aa && x < m_bb && y > m_cc && y < m_dd)
+            return false;
+        return true;
+    } 
+    else if (TaskNum == 2) {
+        // Задача 2: Круг.
+        double cx = m_aa;
+        double cy = m_bb;
+        double R  = m_cc;
+        
+        double distanceSquared = (x - cx) * (x - cx) + (y - cy) * (y - cy);
+        
+        // Добавляем крошечную погрешность 1e-14 на ошибки округления double на самой границе
+        return distanceSquared <= (R * R + 1e-14);
+    }
+    
+    return false;
+}
+void Approximator2D::BuildGridRParallel()
+{
+    int numThreads = std::thread::hardware_concurrency();
+    if (numThreads == 0) numThreads = 1;
 
+    int chunkSize = m_nx / numThreads;
+    int remainder = m_nx % numThreads;
+    std::vector<std::thread> threads;
+    threads.reserve(numThreads);
+
+    int startIdx = 0;
+    for (int t = 0; t < numThreads; ++t) {
+        int myCount = chunkSize + (t < remainder ? 1 : 0);
+        int endIdx = startIdx + myCount;
+
+        threads.emplace_back([this, startIdx, endIdx]() {
+            double cx = m_aa; 
+            double cy = m_bb; 
+
+            for (int i = startIdx; i < endIdx; ++i) {
+                double r = m_x[i]; // Берем уже готовый радиус из initGrid()
+                
+                for (int j = 0; j < m_ny; ++j) {
+                    double phi = m_y[j]; // Берем уже готовый угол из initGrid()
+                    
+                    double x = cx + r * std::cos(phi);
+                    double y = cy + r * std::sin(phi);
+                    
+                    m_f[i * m_ny + j] = f(x, y);
+                }
+            }
+        });
+        startIdx = endIdx;
+    }
+
+    for (auto &th : threads) if (th.joinable()) th.join();
+}
+void Approximator2D::BuildGridParallel()
+{
+    int numThreads = std::thread::hardware_concurrency();
+    if (numThreads == 0) numThreads = 1;
+
+    int chunkSize = m_nx / numThreads;
+    int remainder = m_nx % numThreads;
+    
+    std::vector<std::thread> threads;
+    threads.reserve(numThreads);
+
+    int startIdx = 0;
+    for (int t = 0; t < numThreads; ++t) {
+        int myCount = chunkSize + (t < remainder ? 1 : 0);
+        int endIdx = startIdx + myCount;
+
+        threads.emplace_back([this, startIdx, endIdx]() {
+            for (int i = startIdx; i < endIdx; ++i) {
+                // Берем уже вычисленный в initGrid() X
+                double x = m_x[i]; 
+                
+                for (int j = 0; j < m_ny; ++j) {
+                    // Берем уже вычисленный в initGrid() Y
+                    double y = m_y[j]; 
+                    
+                    m_f[i * m_ny + j] = f(x, y);
+                }
+            }
+        });
+
+        startIdx = endIdx; // Переходим к следующему блоку
+    }
+
+    // Синхронизация
+    for (auto &th : threads) {
+        if (th.joinable()) {
+            th.join();
+        }
+    }
+}
 void Approximator2D::initGrid()
 {
-    // сетка интерполяции по x и y.
     m_x.resize(m_nx);
     m_y.resize(m_ny);
-    for (int i = 0; i < m_nx; i++){
-        m_x[i] = m_a + i * (m_b - m_a) / (m_nx - 1);
-    }
-    for (int j = 0; j < m_ny; j++){
-        m_y[j] = m_c + j * (m_d - m_c) / (m_ny - 1);
-    }
-    // значения функции//
-    m_f.resize(m_nx * m_ny);
-    m_maxAbsF = 0.0;
-    for (int i = 0; i < m_nx; i++) {
-        for (int j = 0; j < m_ny; j++) {
-            if(!IsInsideDomain(m_x[i], m_y[j], m_a, m_b, m_c, m_d, m_aa, m_bb, m_cc, m_dd)){
-                m_f[i * m_ny + j] = NAN;
-            }else{
-                double v = GetExactValue(m_x[i], m_y[j], m_k);
-                m_f[i * m_ny + j] = v;
-                m_maxAbsF = std::max(m_maxAbsF, std::fabs(v));
-            }
+
+    if (TaskNum == 1) {
+        // Задача 1:  декартовы координаты узлов 
+        for (int i = 0; i < m_nx; ++i) {
+            m_x[i] = m_a + i * (m_b - m_a) / (m_nx - 1);
+        }
+        for (int j = 0; j < m_ny; ++j) {
+            m_y[j] = m_c + j * (m_d - m_c) / (m_ny - 1);
+        }
+    } 
+    else if (TaskNum == 2) {
+        // Задача 2 (Круг):
+        double R = m_cc;
+        for (int i = 0; i < m_nx; ++i) {
+            m_x[i] = i * R / (m_nx - 1);           // Сетка по r: от 0 до R
+        }
+        for (int j = 0; j < m_ny; ++j) {
+            m_y[j] = j * 2.0 * M_PI / (m_ny - 1);  // Сетка по phi: от 0 до 2*pi
         }
     }
 
-    // возмущение: добавляем p*0.1*max|f| к f(x_{nx/2}, y_{ny/2})
-    if (m_p != 0) {
-        int imid = m_nx / 2;
-        int jmid = m_ny / 2;
-        m_f[imid * m_ny + jmid] += m_p * 0.1 * m_maxAbsF;
+    size_t requiredSize = static_cast<size_t>(m_nx) * m_ny;
+    if (m_f.size() != requiredSize) {
+        m_f.resize(requiredSize); 
     }
 }
 void Approximator2D::rebuild()
 {
     initGrid();
     if(TaskNum==1){
-        BuildGrid(m_a, m_b, m_c, m_d, m_aa, m_bb, m_cc, m_dd, m_nx, m_ny, m_f,
-                  [this](double x, double y) { return this->f(x, y); });
+        BuildGridParallel();
     }else{
         if(TaskNum==2){
-            BuildGridR(m_aa,m_bb,m_cc,m_nx,m_ny,m_f,[this](double x, double y) { return this->f(x, y); });
+            BuildGridRParallel();
         }
     }
 
@@ -124,7 +221,7 @@ QString Approximator2D::functionName() const
 // исходная функция с возмущением
 double Approximator2D::f(double x, double y) const
 {
-    if(!IsInsideDomain(x, y, m_a, m_b, m_c, m_d, m_aa, m_bb, m_cc, m_dd)){
+    if(!IsInsideDomain(x,y)){
         return NAN;
     }
     double v = GetExactValue(x, y, m_k);
@@ -146,7 +243,7 @@ double Approximator2D::f(double x, double y) const
             targetY = m_bb; // cy
         }
         
-        if (std::abs(x - targetX) < 1e-12 && std::abs(y - targetY) < 1e-9) {
+        if (std::abs(x - targetX) < 1e-12 && std::abs(y - targetY) < 1e-12) {
             v += m_p * 0.1 * m_maxAbsF;
         }
     }

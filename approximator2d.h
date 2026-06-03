@@ -42,6 +42,7 @@ public:
     int scaleExp()  const { return m_scale; }
     int graphMode() const { return m_graphMode; }
     double angle()  const { return m_angle; }   // угол поворота вокруг OZ (рад)
+    int TaskNum; //Что решаем- Прямоугольник или круг? 
 
     // Сеттеры
     void setNx(int nx);
@@ -60,16 +61,22 @@ public:
     const std::vector<double>& getX()     const { return m_x; }
     const std::vector<double>& getY()     const { return m_y; }
     const std::vector<double>& getFvals() const { return m_f; }
+    //Проверка что точка в области для новых методов
+    bool IsInsideDomain(double x, double y) const;
+    //
+    void BuildGridParallel();
+    void BuildGridRParallel();
 
     // Возвращает функцию для отрисовки (с учётом graphMode)
     // functor(x,y) -> значение
     std::function<double(double, double)> getPlotFunc() const;
     QString getPlotName() const;
+    void initGrid();
 
 
 
 private:
-    int TaskNum; //Что решаем- Прямоугольник или круг? 
+    
     double m_a, m_b, m_c, m_d;   // область [a,b]x[c,d]
     double m_aa, m_bb, m_cc, m_dd;   // вырез [aa,bb]x[cc,dd]
     int    m_nx, m_ny;            // число точек интерполяции
@@ -86,6 +93,6 @@ private:
     std::vector<double> m_x, m_y;
     std::vector<double> m_f;      // m_f[i*m_ny+j] = f(m_x[i], m_y[j]) с возмущением
 
-    void initGrid();
+    
     
 };
