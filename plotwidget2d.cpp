@@ -69,13 +69,11 @@ void PlotWidget2D::paintEvent(QPaintEvent *)
 
     std::vector<double> fgrid(dispX * dispY);
 
-    // Определяем количество доступных ядер процессора
     unsigned int numThreads = std::thread::hardware_concurrency();
     if (numThreads == 0) numThreads = 4;
 
     // ─────────────────────────────────────────────────────────────────
-    // ПОТОК 1: ПАРАЛЛЕЛЬНЫЙ РАСЧЕТ МАТЕМАТИКИ (fgrid)
-    // ─────────────────────────────────────────────────────────────────
+    // Многопоток 1: ПАРАЛЛЕЛЬНЫЙ РАСЧЕТ ЗНАЧЕНИЙ (fgrid)
     std::vector<std::thread> threads;
     threads.reserve(numThreads);
 
@@ -123,10 +121,8 @@ void PlotWidget2D::paintEvent(QPaintEvent *)
     std::vector<QPointF> screenGrid(dispX * dispY);
 
     // ─────────────────────────────────────────────────────────────────
-    // ПОТОК 2: ПАРАЛЛЕЛЬНЫЙ РАСЧЕТ ПРОЕКЦИЙ (screenGrid)
-    // ─────────────────────────────────────────────────────────────────
+    // МНОГОПОТОК 2: ПАРАЛЛЕЛЬНЫЙ РАСЧЕТ ПРОЕКЦИЙ (screenGrid)
     for (unsigned int t = 0; t < numThreads; ++t) {
-        // ДОБАВЛЕНО: &gx, &gy внесены в список захвата лямбды
         threads.emplace_back([t, numThreads, dispX, dispY, &gx, &gy, &fgrid, &screenGrid, this,
                               cx, cy, scaleXY, scaleZ, xmid, ymid, zmid]() {
             int startX = t * dispX / numThreads;
@@ -146,13 +142,12 @@ void PlotWidget2D::paintEvent(QPaintEvent *)
     threads.clear();
 
     // ─────────────────────────────────────────────────────────────────
-    // ПОТОК 3: ПАРАЛЛЕЛЬНАЯ ОТРИСОВКА ЛИНИЙ В ОБЪЕКТЫ QIMAGE (СЛОИ)
-    // ─────────────────────────────────────────────────────────────────
+    // МНОГОПОТОК 3: ПАРАЛЛЕЛЬНАЯ ОТРИСОВКА ЛИНИЙ В ОБЪЕКТЫ QIMAGE (СЛОИ)
     std::vector<QImage> layers(numThreads);
 
     for (unsigned int t = 0; t < numThreads; ++t) {
         threads.emplace_back([t, numThreads, dispX, dispY, w, h, &fgrid, &screenGrid, &layers]() {
-            // Создаем личный прозрачный холст для потока
+            // КАЖДОМУ прозрачный холст
             layers[t] = QImage(w, h, QImage::Format_ARGB32_Premultiplied);
             layers[t].fill(Qt::transparent);
 
@@ -209,8 +204,7 @@ void PlotWidget2D::paintEvent(QPaintEvent *)
     for (auto& th : threads) th.join();
 
     // ─────────────────────────────────────────────────────────────────
-    // КОМПОЗИЦИЯ: СКЛЕИВАЕМ СЛОИ В ГЛАВНОМ ПОТОКЕ ЗА ОДИН МИГ
-    // ─────────────────────────────────────────────────────────────────
+    // КОМПОЗИЦИЯ: СКЛЕИВАЕМ СЛОИ В ГЛАВНОМ ПОТОКЕ
     for (const auto& layer : layers) {
         painter.drawImage(0, 0, layer);
     }
