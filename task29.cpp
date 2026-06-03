@@ -4,15 +4,23 @@
 
 #include "task29.h"
 // Функция расчета значения для прямоугольной области с вырезом
+
+
+bool IsInsideRec(double x, double y, double a, double b, double c, double d){
+    if (x < a || x > b || y < c || y > d)
+        return false;
+    return true;
+}
 double GetValue(double px, double py, 
                       const std::vector<double>& mx, 
                       const std::vector<double>& my, 
                       const std::vector<double>& mf, 
                       int nx, int ny,
-                      double aa, double bb, double cc, double dd)
+                      double aa, double bb, double cc, double dd,
+                    double aaa, double bbb, double ccc, double ddd)
 {
     // 1. В дырке
-    if (px >= aa && px <= bb && py >= cc && py <= dd) {
+    if (IsInsideRec(px,py,aa,bb,cc,dd) ||IsInsideRec(px,py,aaa,bbb,ccc,ddd) ) {
         return NAN; 
     }
 

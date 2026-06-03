@@ -181,6 +181,9 @@ void PlotWidget2D::keyPressEvent(QKeyEvent *event)
     //const auto &x = m_approx->getX();
     //const auto &f = m_approx->getF();
     fprintf(stderr, "=== Debug: nx=%d,ny=%d, a=%.6f, b=%.6f, c=%.6f, d=%.6f ===\n", m_approx->nx(), m_approx->ny(), m_approx->a(), m_approx->b(), m_approx->c(), m_approx->d());
+    fprintf(stderr, "f= %.6f\n", m_approx->f(1.1, 1.1));
+
+
     /*   Время   */
     /*
     double px = 1;

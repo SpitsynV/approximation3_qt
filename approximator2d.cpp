@@ -6,9 +6,9 @@
 #include <algorithm>
 #include <bits/std_thread.h>
 
-Approximator2D::Approximator2D(int TaskNum, double a, double b, double c, double d, double aa, double bb, double cc, double dd,
+Approximator2D::Approximator2D(int TaskNum, double a, double b, double c, double d, double aa, double bb, double cc, double dd,double aaa, double bbb, double ccc, double ddd,
                                int nx, int ny, int mx, int my, int k)
-    : TaskNum(TaskNum), m_a(a), m_b(b), m_c(c), m_d(d), m_aa(aa), m_bb(bb), m_cc(cc), m_dd(dd)
+    : TaskNum(TaskNum), m_a(a), m_b(b), m_c(c), m_d(d), m_aa(aa), m_bb(bb), m_cc(cc), m_dd(dd),m_aaa(aaa), m_bbb(bbb), m_ccc(ccc), m_ddd(ddd)
     , m_nx(nx), m_ny(ny), m_mx(mx), m_my(my)
     , m_k(k), m_p(0), m_scale(0), m_graphMode(0), m_angle(0.0)
     , m_maxAbsF(0.0)
@@ -32,10 +32,10 @@ bool Approximator2D::IsInsideDomain(double x, double y) const
         if (x < m_a || x > m_b || y < m_c || y > m_d)
         return false;
         // Точка не должна лежать строго внутри выреза
-        if (x > m_aa && x < m_bb && y > m_cc && y < m_dd)
+        if (IsInsideRec(x,y,m_aa,m_bb,m_cc,m_dd) ||IsInsideRec(x,y,m_aaa,m_bbb,m_ccc,m_ddd) )
             return false;
         return true;
-    } 
+    }
     else if (TaskNum == 2) {
         // Задача 2: Круг.
         double cx = m_aa;
@@ -130,19 +130,39 @@ void Approximator2D::initGrid()
     m_x.resize(m_nx);
     m_y.resize(m_ny);
 
-    if (TaskNum == 1) {//Прямоугольник без прямоугольника
+    if (TaskNum == 1) {//Прямоугольник без 2 прямоугольников
         // --- РАСЧЕТ БЛОКОВ ПО ОСИ X ---
-        double L1_x = m_aa - m_a;  // До дырки
-        double L2_x = m_bb - m_aa; // Дырка
-        double L3_x = m_b - m_bb;  // После дырки
+        std::vector<double>boundx={m_aa,m_aaa,m_bb, m_bbb};
+        std::sort(boundx.begin(),boundx.end()+1);
+        double boundx1=boundx[0];
+        double boundx2=boundx[1];
+        double boundx3=boundx[2];
+        double boundx4=boundx[3];
+        /**/
+        double L1_x = boundx1 - m_a ; // До дырки
+        double L2_x = boundx2 - boundx1; // Дырка 1
+        //
+        if(L2_x<0){std::swap(boundx1, boundx2); L2_x=-L2_x;}
+        double L3_x = boundx3 - boundx2;  // После дырки 1
+
+        //Надо?
+        if(L3_x<0){std::swap(boundx2, boundx3); L3_x=-L3_x;}
+
+        double L4_x=boundx4-boundx3;
+        if(L4_x<0){std::swap(boundx3, boundx4); L4_x=-L4_x;}
+
+        double L5_x=m_b-boundx4;
         double L_x  = m_b - m_a;   // Полная длина
 
         int total_intervals_x = m_nx - 1;
+        /**/
 
         int int1_x = std::max(1, static_cast<int>(std::round(total_intervals_x * L1_x / L_x)));
         int int2_x = std::max(1, static_cast<int>(std::round(total_intervals_x * L2_x / L_x)));
-        int int3_x = total_intervals_x - int1_x - int2_x;
-        if (int3_x < 1) int3_x = 1;
+        int int3_x = std::max(1, static_cast<int>(std::round(total_intervals_x * L3_x / L_x)));
+        int int4_x = std::max(1, static_cast<int>(std::round(total_intervals_x * L4_x / L_x)));
+        int int5_x = total_intervals_x - int1_x - int2_x-int3_x-int4_x;
+        if (int5_x < 1) int5_x = 1;
 
         // Блок 1: 
         for (int i = 0; i <= int1_x; ++i) {
@@ -150,24 +170,51 @@ void Approximator2D::initGrid()
         }
         // Блок 2:
         for (int i = 1; i <= int2_x; ++i) {
-            m_x[int1_x + i] = m_aa + i * L2_x / int2_x;
+            m_x[int1_x + i] = boundx1 + i * L2_x / int2_x;
         }
         // Блок 3: 
         for (int i = 1; i <= int3_x; ++i) {
-            m_x[int1_x + int2_x + i] = m_bb + i * L3_x / int3_x;
+            m_x[int1_x + int2_x + i] = boundx2 + i * L3_x / int3_x;
         }
-
+        //Блок4
+        for (int i = 1; i <= int4_x; ++i) {
+            m_x[int1_x + int2_x +int3_x +i] = boundx3 + i * L4_x / int4_x;
+        }
+        //Блок 5
+        for (int i = 1; i <= int5_x; ++i) {
+            m_x[int1_x + int2_x +int3_x+int4_x+i] = boundx4 + i * L5_x / int5_x;
+        }
+//DONE^
         // --- РАСЧЕТ БЛОКОВ ПО ОСИ Y ---
-        double L1_y = m_cc - m_c;  // До дырки
-        double L2_y = m_dd - m_cc; // Дырка
-        double L3_y = m_d - m_dd;  // После дырки
-        double L_y  = m_d - m_c;   // Полная длина
+        std::vector<double>boundy={m_cc,m_ccc,m_dd, m_ddd};
+        std::sort(boundy.begin(),boundy.end()+1);
 
+
+        double boundy1=boundy[0];
+        double boundy2=boundy[1];
+        double boundy3=boundy[2];
+        double boundy4=boundy[3];
+       
+        double L1_y = boundy1 - m_c;  // До дырки
+
+        double L2_y = boundy2 - boundy1; // Дырка 1
+        if(L2_y<0){std::swap(boundy1, boundy2); L2_y=-L2_y;}
+
+        double L3_y = boundy3 - boundy2;  // После дырки
+        if(L3_y<0){std::swap(boundy2, boundy3); L3_y=-L2_y;}
+        double L4_y = boundy4-boundy3;//Дырка 2
+        if(L4_y<0){std::swap(boundy3, boundy4); L4_y=-L4_y;}
+        double L5_y = m_d-boundy4;
+        double L_y  = m_d - m_c;   // Полная длина
         int total_intervals_y = m_ny - 1;
+
         int int1_y = std::max(1, static_cast<int>(std::round(total_intervals_y * L1_y / L_y)));
         int int2_y = std::max(1, static_cast<int>(std::round(total_intervals_y * L2_y / L_y)));
-        int int3_y = total_intervals_y - int1_y - int2_y;
-        if (int3_y < 1) int3_y = 1;
+        int int3_y = std::max(1, static_cast<int>(std::round(total_intervals_y * L3_y / L_y)));
+        int int4_y = std::max(1, static_cast<int>(std::round(total_intervals_y * L4_y / L_y)));
+
+        int int5_y = total_intervals_y - int1_y - int2_y-int3_y-int4_y;
+        if (int5_y < 1) int5_y = 1;
 
         // Блок 1: 
         for (int j = 0; j <= int1_y; ++j) {
@@ -175,11 +222,19 @@ void Approximator2D::initGrid()
         }
         // Блок 2:
         for (int j = 1; j <= int2_y; ++j) {
-            m_y[int1_y + j] = m_cc + j * L2_y / int2_y;
+            m_y[int1_y + j] = boundy1 + j * L2_y / int2_y;
         }
-        // Блок 3:
+         // Блок 3:
         for (int j = 1; j <= int3_y; ++j) {
-            m_y[int1_y + int2_y + j] = m_dd + j * L3_y / int3_y;
+            m_y[int2_y+int1_y + j] = boundy2 + j * L3_y / int3_y;
+        }
+         // Блок 4:
+        for (int j = 1; j <= int4_y; ++j) {
+            m_y[int3_y+int2_y+int1_y + j] = boundy3 + j * L4_y / int4_y;
+        }
+        // Блок 5:
+        for (int j = 1; j <= int5_y; ++j) {
+            m_y[int4_y+int3_y+int2_y+int1_y + j] = boundy4+ j * L5_y / int5_y;
         }
     } 
     else if (TaskNum == 2) {//Круг
@@ -292,7 +347,7 @@ double Approximator2D::f(double x, double y) const
 
 double Approximator2D::approx1(double x, double y) const
 {
-    return GetValue(x,y,m_x,m_y,m_f,m_nx,m_ny,m_aa,m_bb,m_cc,m_dd);
+    return GetValue(x,y,m_x,m_y,m_f,m_nx,m_ny,m_aa,m_bb,m_cc,m_dd,m_aaa, m_bbb, m_ccc,m_ddd);
 }
 double Approximator2D::approx2(double x, double y) const
 {

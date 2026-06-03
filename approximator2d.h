@@ -8,8 +8,8 @@
 class Approximator2D
 {
 public:
-    Approximator2D(int TaskNum, double a, double b, double c, double d, double aa, double bb, double cc, double dd,
-                   int nx, int ny, int mx, int my, int k);
+    Approximator2D(int TaskNum, double a, double b, double c, double d, double aa, double bb, double cc, double dd,double aaa, double bbb, double ccc, double ddd,
+                               int nx, int ny, int mx, int my, int k);
 
     // Пересчёт коэффициентов при изменении параметров
     void rebuild();
@@ -79,6 +79,7 @@ private:
     
     double m_a, m_b, m_c, m_d;   // область [a,b]x[c,d]
     double m_aa, m_bb, m_cc, m_dd;   // вырез [aa,bb]x[cc,dd]
+    double m_aaa, m_bbb, m_ccc, m_ddd;   // вырез [aaa,bbb]x[ccc,ddd]
     int    m_nx, m_ny;            // число точек интерполяции
     int    m_mx, m_my;            // число точек визуализации
     int    m_k;                   // номер функции
