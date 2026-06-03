@@ -132,29 +132,71 @@ void Approximator2D::initGrid()
     m_x.resize(m_nx);
     m_y.resize(m_ny);
 
-    if (TaskNum == 1) {
-        // Задача 1:  декартовы координаты узлов 
-        for (int i = 0; i < m_nx; ++i) {
-            m_x[i] = m_a + i * (m_b - m_a) / (m_nx - 1);
+    if (TaskNum == 1) {//Прямоугольник без прямоугольника
+        // --- РАСЧЕТ БЛОКОВ ПО ОСИ X ---
+        double L1_x = m_aa - m_a;  // До дырки
+        double L2_x = m_bb - m_aa; // Дырка
+        double L3_x = m_b - m_bb;  // После дырки
+        double L_x  = m_b - m_a;   // Полная длина
+
+        int total_intervals_x = m_nx - 1;
+
+        int int1_x = std::max(1, static_cast<int>(std::round(total_intervals_x * L1_x / L_x)));
+        int int2_x = std::max(1, static_cast<int>(std::round(total_intervals_x * L2_x / L_x)));
+        int int3_x = total_intervals_x - int1_x - int2_x;
+        if (int3_x < 1) int3_x = 1;
+
+        // Блок 1: 
+        for (int i = 0; i <= int1_x; ++i) {
+            m_x[i] = m_a + i * L1_x / int1_x;
         }
-        for (int j = 0; j < m_ny; ++j) {
-            m_y[j] = m_c + j * (m_d - m_c) / (m_ny - 1);
+        // Блок 2:
+        for (int i = 1; i <= int2_x; ++i) {
+            m_x[int1_x + i] = m_aa + i * L2_x / int2_x;
+        }
+        // Блок 3: 
+        for (int i = 1; i <= int3_x; ++i) {
+            m_x[int1_x + int2_x + i] = m_bb + i * L3_x / int3_x;
+        }
+
+        // --- РАСЧЕТ БЛОКОВ ПО ОСИ Y ---
+        double L1_y = m_cc - m_c;  // До дырки
+        double L2_y = m_dd - m_cc; // Дырка
+        double L3_y = m_d - m_dd;  // После дырки
+        double L_y  = m_d - m_c;   // Полная длина
+
+        int total_intervals_y = m_ny - 1;
+        int int1_y = std::max(1, static_cast<int>(std::round(total_intervals_y * L1_y / L_y)));
+        int int2_y = std::max(1, static_cast<int>(std::round(total_intervals_y * L2_y / L_y)));
+        int int3_y = total_intervals_y - int1_y - int2_y;
+        if (int3_y < 1) int3_y = 1;
+
+        // Блок 1: 
+        for (int j = 0; j <= int1_y; ++j) {
+            m_y[j] = m_c + j * L1_y / int1_y;
+        }
+        // Блок 2:
+        for (int j = 1; j <= int2_y; ++j) {
+            m_y[int1_y + j] = m_cc + j * L2_y / int2_y;
+        }
+        // Блок 3:
+        for (int j = 1; j <= int3_y; ++j) {
+            m_y[int1_y + int2_y + j] = m_dd + j * L3_y / int3_y;
         }
     } 
-    else if (TaskNum == 2) {
-        // Задача 2 (Круг):
+    else if (TaskNum == 2) {//Круг
         double R = m_cc;
         for (int i = 0; i < m_nx; ++i) {
-            m_x[i] = i * R / (m_nx - 1);           // Сетка по r: от 0 до R
+            m_x[i] = i * R / (m_nx - 1);
         }
         for (int j = 0; j < m_ny; ++j) {
-            m_y[j] = j * 2.0 * M_PI / (m_ny - 1);  // Сетка по phi: от 0 до 2*pi
+            m_y[j] = j * 2.0 * M_PI / (m_ny - 1);
         }
     }
 
     size_t requiredSize = static_cast<size_t>(m_nx) * m_ny;
     if (m_f.size() != requiredSize) {
-        m_f.resize(requiredSize); 
+        m_f.resize(requiredSize);
     }
 }
 void Approximator2D::rebuild()
@@ -252,7 +294,7 @@ double Approximator2D::f(double x, double y) const
 
 double Approximator2D::approx1(double x, double y) const
 {
-    return GetValue(x,y,m_a,m_b,m_c,m_d,m_aa,m_bb,m_cc,m_dd,m_f,m_nx,m_ny);
+    return GetValue(x,y,m_x,m_y,m_f,m_nx,m_ny,m_aa,m_bb,m_cc,m_dd);
 }
 double Approximator2D::approx2(double x, double y) const
 {
