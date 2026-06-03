@@ -7,7 +7,6 @@ double InterpolateTriangle(double x, double y,
                            double x3, double y3, double f3) {
     double det = (x1 - x3) * (y2 - y3) - (x2 - x3) * (y1 - y3);
     
-    // Если треугольник выродился в прямую (защита от деления на 0)
     if (std::abs(det) < 1e-12) {
         return (f1 + f2 + f3) / 3.0; 
     }
@@ -30,7 +29,7 @@ void BuildGridR(double cx, double cy, double R, int nx, int ny,
         for (int j = 0; j < ny; ++j) {
             double phi = j * hphi;
             
-            // Прямое отображение из вспомогательного прямоугольника в декартов круг
+            // отображение из вспомогательного прямоугольника в исх круг
             double x = cx + r * std::cos(phi);
             double y = cy + r * std::sin(phi);
             
@@ -57,7 +56,7 @@ double GetValueR(double px, double py, double cx, double cy, double R,
     
     double pphi = std::atan2(dy, dx);
     if (pphi < 0) {
-        pphi += 2.0 * M_PI; // Переводим в диапазон [0, 2*PI]
+        pphi += 2.0 * M_PI; // угол в диапазоне [0, 2*PI]
     }
     
     // Шаги вспомогательной сетки
@@ -79,22 +78,22 @@ double GetValueR(double px, double py, double cx, double cy, double R,
     double phi1 = (j + 1) * hphi;
     
     // Находим реальные (x, y) координаты 4-х вершин полярного четырехугольника
-    // Узел (i, j)
+    // Узел 00(i, j)
     double x00 = cx + r0 * std::cos(phi0);
     double y00 = cy + r0 * std::sin(phi0);
     double f00 = val[i * ny + j];
     
-    // Узел (i+1, j)
+    // Узел 10(i+1, j)
     double x10 = cx + r1 * std::cos(phi0);
     double y10 = cy + r1 * std::sin(phi0);
     double f10 = val[(i + 1) * ny + j];
     
-    // Узел (i, j+1)
+    // Узел 01(i, j+1)
     double x01 = cx + r0 * std::cos(phi1);
     double y01 = cy + r0 * std::sin(phi1);
     double f01 = val[i * ny + (j + 1)];
     
-    // Узел (i+1, j+1)
+    // Узел 11(i+1, j+1)
     double x11 = cx + r1 * std::cos(phi1);
     double y11 = cy + r1 * std::sin(phi1);
     double f11 = val[(i + 1) * ny + (j + 1)];

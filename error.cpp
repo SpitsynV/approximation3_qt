@@ -49,7 +49,7 @@ double maxAbsoluteErrorParallel(double a, double b, double c, double d,
     std::vector<std::thread> threads;
     threads.reserve(numThreads);
 
-    // Размер базового блока итераций на поток
+    // Размер блока
     int chunkSize = totalX / numThreads;
     int remainder = totalX % numThreads;
 
@@ -61,7 +61,6 @@ double maxAbsoluteErrorParallel(double a, double b, double c, double d,
         int endIdx = startIdx + myCount;  // не включая
                                         //те на блок [StartIdx, endIdx)
 
-        // Запускаем поток
       // Запускаем поток
 threads.emplace_back([&, start = startIdx, end = endIdx, t]() {
     double maxErrLocal = 0.0;
@@ -108,7 +107,7 @@ double integralError2D(
     double a, double b, double c, double d,
     const std::function<double(double,double)> &exactFunc2D,
     const std::function<double(double,double)> &approxFunc2D,
-    int Nx, int Ny)  // число узлов по каждой переменной (чётные для Симпсона)
+    int Nx, int Ny)  // число узлов по каждой переменной
 {
     double midX = (a + b) / 2.0, halfX = (b - a) / 2.0;
     double midY = (c + d) / 2.0, halfY = (d - c) / 2.0;

@@ -57,7 +57,6 @@ void PlotWidget2D::paintEvent(QPaintEvent *)
     double yMin = ymid - yhalf, yMax = ymid + yhalf;
 
     // ── Визуализационная сетка mx×my ──────────────────────────────────
-    // ограничиваем отображаемое число ячеек размером экрана
     const int mx = m_approx->mx();
     const int my = m_approx->my();
     const int dispX = std::min(mx, std::max(2, width()  / 4));
@@ -94,7 +93,6 @@ void PlotWidget2D::paintEvent(QPaintEvent *)
     double zrange = Fmax - Fmin;
     if (zrange < 1e-14) zrange = 1.0;
 
-    // ── Масштабирование проекции ───────────────────────────────────────
     // подбираем scaleXY и scaleZ так, чтобы поверхность вписалась в окно
     double xyrange = std::max(xMax - xMin, yMax - yMin);
     double scaleXY = std::min(width(), height()) * 0.4 / (xyrange > 0 ? xyrange : 1.0);

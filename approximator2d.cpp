@@ -43,8 +43,6 @@ bool Approximator2D::IsInsideDomain(double x, double y) const
         double R  = m_cc;
         
         double distanceSquared = (x - cx) * (x - cx) + (y - cy) * (y - cy);
-        
-        // Добавляем крошечную погрешность 1e-14 на ошибки округления double на самой границе
         return distanceSquared <= (R * R + 1e-14);
     }
     
