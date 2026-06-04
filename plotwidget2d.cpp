@@ -70,7 +70,7 @@ void PlotWidget2D::paintEvent(QPaintEvent *)
     std::vector<double> fgrid(dispX * dispY);
 
     unsigned int numThreads = std::thread::hardware_concurrency();
-    if (numThreads == 0) numThreads = 4;
+    if (numThreads == 0) numThreads = 1;
 
     // ─────────────────────────────────────────────────────────────────
     // Многопоток 1: ПАРАЛЛЕЛЬНЫЙ РАСЧЕТ ЗНАЧЕНИЙ (fgrid)
@@ -241,7 +241,7 @@ void PlotWidget2D::keyPressEvent(QKeyEvent *event)
     //const auto &x = m_approx->getX();
     //const auto &f = m_approx->getF();
     fprintf(stderr, "=== Debug: nx=%d,ny=%d, a=%.6f, b=%.6f, c=%.6f, d=%.6f ===\n", m_approx->nx(), m_approx->ny(), m_approx->a(), m_approx->b(), m_approx->c(), m_approx->d());
-    fprintf(stderr, "f= %.6f\n", m_approx->f(1.1, 1.1));
+    //fprintf(stderr, "f= %.6f\n", m_approx->f(1.1, 1.1));
 
 
     /*   Время   */

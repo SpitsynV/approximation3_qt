@@ -35,8 +35,8 @@ double GetValue(double px, double py,
     if (j < 0) j = 0;
     if (j >= ny - 1) j = ny - 2;
 
-    double x0 = mx[i],     x1 = mx[i+1];
-    double y0 = my[j],     y1 = my[j+1];
+    double x0 = mx[i], x1 = mx[i+1];
+    double y0 = my[j], y1 = my[j+1];
     double f00 = mf[i * ny + j];        
     double f10 = mf[(i + 1) * ny + j];      
     double f01 = mf[i * ny + j + 1];      

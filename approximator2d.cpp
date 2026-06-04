@@ -133,7 +133,7 @@ void Approximator2D::initGrid()
     if (TaskNum == 1) {//Прямоугольник без 2 прямоугольников
         // --- РАСЧЕТ БЛОКОВ ПО ОСИ X ---
         std::vector<double>boundx={m_aa,m_aaa,m_bb, m_bbb};
-        std::sort(boundx.begin(),boundx.end()+1);
+        std::sort(boundx.begin(),boundx.end());
         double boundx1=boundx[0];
         double boundx2=boundx[1];
         double boundx3=boundx[2];
@@ -184,10 +184,10 @@ void Approximator2D::initGrid()
         for (int i = 1; i <= int5_x; ++i) {
             m_x[int1_x + int2_x +int3_x+int4_x+i] = boundx4 + i * L5_x / int5_x;
         }
-//DONE^
+
         // --- РАСЧЕТ БЛОКОВ ПО ОСИ Y ---
         std::vector<double>boundy={m_cc,m_ccc,m_dd, m_ddd};
-        std::sort(boundy.begin(),boundy.end()+1);
+        std::sort(boundy.begin(),boundy.end());
 
 
         double boundy1=boundy[0];
@@ -201,7 +201,7 @@ void Approximator2D::initGrid()
         if(L2_y<0){std::swap(boundy1, boundy2); L2_y=-L2_y;}
 
         double L3_y = boundy3 - boundy2;  // После дырки
-        if(L3_y<0){std::swap(boundy2, boundy3); L3_y=-L2_y;}
+        if(L3_y<0){std::swap(boundy2, boundy3); L3_y=-L3_y;}
         double L4_y = boundy4-boundy3;//Дырка 2
         if(L4_y<0){std::swap(boundy3, boundy4); L4_y=-L4_y;}
         double L5_y = m_d-boundy4;

@@ -40,7 +40,7 @@ double maxAbsoluteErrorParallel(double a, double b, double c, double d,
 
     // Количество итераций по x
     int totalX = N + 1;
-    // Шаги сетки
+    
     double stepx = (b - a) / N;
     double stepy = (d - c) / N;
 
